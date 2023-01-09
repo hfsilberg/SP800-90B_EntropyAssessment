@@ -447,7 +447,7 @@ int main(int argc, char* argv[]) {
     if (((data.alph_size > 2) || !initial_entropy)) {
         ret_min_entropy = multi_mmc_test(data.bsymbols, data.blen, 2, verbose, "Bitstring");
         if (ret_min_entropy >= 0) {
-            if (verbose == 2) printf("\tMulti Markov Model with Counting (MultiMMC) Prediction Test Estimate (bit string) = %f / 1 bit(s)\n", ret_min_entropy);
+            if (verbose >= 2) printf("\tMulti Markov Model with Counting (MultiMMC) Prediction Test Estimate (bit string) = %f / 1 bit(s)\n", ret_min_entropy);
             tc639.h_bitstring = ret_min_entropy;
             H_bitstring = min(ret_min_entropy, H_bitstring);
         }
@@ -456,7 +456,7 @@ int main(int argc, char* argv[]) {
     if (initial_entropy) {
         ret_min_entropy = multi_mmc_test(data.symbols, data.len, data.alph_size, verbose, "Literal");
         if (ret_min_entropy >= 0) {
-            if (verbose == 2) printf("\tMulti Markov Model with Counting (MultiMMC) Prediction Test Estimate = %f / %d bit(s)\n", ret_min_entropy, data.word_size);
+            if (verbose >= 2) printf("\tMulti Markov Model with Counting (MultiMMC) Prediction Test Estimate = %f / %d bit(s)\n", ret_min_entropy, data.word_size);
             tc639.h_original = ret_min_entropy;
             H_original = min(ret_min_entropy, H_original);
         }

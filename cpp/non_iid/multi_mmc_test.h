@@ -8,6 +8,7 @@ static double binaryMultiMMCPredictionEstimate(const byte *S, long L, const int 
 {
 
    long scoreboard[D_MMC] = {0};
+   long sb_tries[D_MMC] = {0};
    long *binaryDict[D_MMC];
    long winner = 0;
    long curWinner;
@@ -81,13 +82,22 @@ static double binaryMultiMMCPredictionEstimate(const byte *S, long L, const int 
          }
 
          if(found_x) {
+	    sb_tries[d]++;
             // x is present as a prefix.
             // Check to see if the current prediction is correct.
             if(curPrediction == S[i]) {
                // prediction is correct, update scoreboard and (the next round's) winner
                scoreboard[d]++;
-               if(scoreboard[d] >= scoreboard[winner]) winner = d;
-
+               //if(scoreboard[d] >= scoreboard[winner]) winner = d;
+	      
+	       // try attempted accuracy 
+	       assert(sb_tries[winner] != 0);
+	       if(scoreboard[d] / float(sb_tries[d]) > scoreboard[winner] / float(sb_tries[winner])){ 
+		       printf("#%d# NEW WINNER %d, OLD: %d\n", i, d, winner);
+		       printf("  new: %d / %d    old: %d / %d\n", scoreboard[d], sb_tries[d], scoreboard[winner], sb_tries[winner]);
+		       winner = d;
+		}
+	
                //If the best predictor was previously d, increment the relevant counters
                if(d == curWinner){
                   correctCount++;
