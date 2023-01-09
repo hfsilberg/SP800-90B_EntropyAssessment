@@ -104,10 +104,10 @@ int sha256_file(char *path, char outputBuffer[65]) {
 
     
     fseek(file, 0, SEEK_END);
-    fileLen = ftell(file);
+    fileLength = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    buffer = (unsigned const char *) malloc(fileLen + 1);
+    buffer = (unsigned const char *) malloc(fileLength + 1);
     if (!buffer) {
         fprintf(stderr, "Out of memory error!");
         fclose(file);
@@ -117,7 +117,7 @@ int sha256_file(char *path, char outputBuffer[65]) {
     i = fread((char *) buffer, fileLength, 1, file);
     fclose(file);
 
-    SHA256(buffer, fileLen, (unsigned char*) &digest);
+    SHA256(buffer, fileLength, (unsigned char*) &digest);
 
     sha256_hash_string(digest, outputBuffer);
     fclose(file);
