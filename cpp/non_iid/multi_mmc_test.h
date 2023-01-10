@@ -82,7 +82,7 @@ static double binaryMultiMMCPredictionEstimate(const byte *S, long L, const int 
          }
 
          if(found_x) {
-	    sb_tries[d]++;
+	         sb_tries[d]++;
             // x is present as a prefix.
             // Check to see if the current prediction is correct.
             if(curPrediction == S[i]) {
@@ -90,13 +90,13 @@ static double binaryMultiMMCPredictionEstimate(const byte *S, long L, const int 
                scoreboard[d]++;
                //if(scoreboard[d] >= scoreboard[winner]) winner = d;
 	      
-	       // try attempted accuracy 
-	       assert(sb_tries[winner] != 0);
-	       if(scoreboard[d] / float(sb_tries[d]) > scoreboard[winner] / float(sb_tries[winner])){ 
-		       printf("#%d# NEW WINNER %d, OLD: %d\n", i, d, winner);
-		       printf("  new: %d / %d    old: %d / %d\n", scoreboard[d], sb_tries[d], scoreboard[winner], sb_tries[winner]);
-		       winner = d;
-		}
+               // try attempted accuracy 
+               assert(sb_tries[winner] != 0);
+               if(scoreboard[d] / float(sb_tries[d]) > scoreboard[winner] / float(sb_tries[winner])){ 
+                  //  printf("#%d# NEW WINNER %d, OLD: %d\n", i, d, winner);
+                  //  printf("  new: %d / %d    old: %d / %d\n", scoreboard[d], sb_tries[d], scoreboard[winner], sb_tries[winner]);
+                  winner = d;
+               }
 	
                //If the best predictor was previously d, increment the relevant counters
                if(d == curWinner){
@@ -159,7 +159,14 @@ double multi_mmc_test(byte *data, long len, int alph_size, const int verbose, co
 	int entries[D_MMC];
 	long i, d, N, C, run_len, max_run_len;
 	long scoreboard[D_MMC] = {0};
-	array<byte, D_MMC> x;
+   array<byte, D_MMC> x;
+
+   long sb_tries[D_MMC] = {0};
+   // float attempted_accuracy[D_MMC] = {0};
+	float max_acc = 0;
+   int attempted_winner = 0;
+   int diffg = 0, diffb = 0;
+   byte max_pred;
 
 	if(alph_size == 2) return binaryMultiMMCPredictionEstimate(data, len, verbose, label);
 
@@ -197,10 +204,13 @@ double multi_mmc_test(byte *data, long len, int alph_size, const int verbose, co
 	for (i = 2; i < len; i++){
 		bool found_x = false;
 		cur_winner = winner;
-		memset(x.data(), 0, D_MMC);
+		// memset(x.data(), 0, D_MMC);
+      max_acc = 0.0;
+      max_pred = 0;
 
 		for(d = 0; (d < D_MMC) && (i-2 >= d); d++) {
-			map<array<byte, D_MMC>, PostfixDictionary>::iterator curp;
+			memset(x.data(), 0, D_MMC);
+         map<array<byte, D_MMC>, PostfixDictionary>::iterator curp;
 			// check if x has been previously seen as a prefix. If the prefix x has not occurred,
 			// then do not make a prediction for current d and larger d's
 			// as well, since it will not occur for them either. In other words,
@@ -222,20 +232,49 @@ double multi_mmc_test(byte *data, long len, int alph_size, const int verbose, co
 			if(found_x){
 				long predictCount;
 				// x has occurred, find max (x,y) pair across all y's
+
+            // attempted acc
+            if(scoreboard[d] / float(sb_tries[d]) > max_acc) {// maybe tie break with sb_tries?
+               max_acc = scoreboard[d] / float(sb_tries[d]);
+               max_pred = (curp->second).predict(predictCount);
+               attempted_winner = d;
+            }
+            sb_tries[d]++;
+            
 				// Check to see if the current prediction is correct.
 				if((curp->second).predict(predictCount) == data[i]){
 					// prediction is correct, update scoreboard and winner
-					if(++scoreboard[d] >= scoreboard[winner]) winner = d;
-					if(d == cur_winner){
-						C++;
-						if(++run_len > max_run_len) max_run_len = run_len;
-					}
+					// if(++scoreboard[d] >= scoreboard[winner]) winner = d;
+
+               assert(sb_tries[winner] != 0);
+               if(++scoreboard[d] / float(sb_tries[d]) > scoreboard[winner] / float(sb_tries[winner])){ 
+                  //  printf("#%d# NEW WINNER %d, OLD: %d\n", i, d, winner);
+                  //  printf("  new: %d / %d    old: %d / %d\n", scoreboard[d], sb_tries[d], scoreboard[winner], sb_tries[winner]);
+                  winner = d;
+               }
+
+
+					// if(d == cur_winner){
+					// 	C++;
+					// 	if(++run_len > max_run_len) max_run_len = run_len;
+					// }
+
+               // track best previous accuracy for any nonnull guesses
+               // track current guess based on accuracy
+               // update if d's prev accuracy is better
+               // 
+
+
+               // attempted accuracy ranking
+               // scoreboard[d]++;
+               // attempted_accuracy[d] 
+               // if(scoredboard[d] / float(sb_tries[d]) > )
 				}
-				else if(d == cur_winner) {
-					//This prediction was wrong;
-					//If the best predictor was previously d, zero the run length counter
-					run_len = 0;
-				}
+				// else if(d == cur_winner) {
+				// 	//This prediction was wrong;
+				// 	//If the best predictor was previously d, zero the run length counter
+				// 	run_len = 0;
+				// }
 
 				//Now check to see in (x,y) needs to be counted or (x,y) added to the dictionary
 				if((curp->second).incrementPostfix(data[i], entries[d] < MAX_ENTRIES)) {
@@ -250,7 +289,17 @@ double multi_mmc_test(byte *data, long len, int alph_size, const int verbose, co
 				(M[d][x]).incrementPostfix(data[i], true);
 				entries[d]++;
 			}
+
 		}
+
+      // attempted accuracy -> check if our best guess is correct
+      if(max_pred == data[i]){
+         C++;
+         if(++run_len > max_run_len) max_run_len = run_len;
+      } else {
+         run_len = 0;
+      }
+
 	}
 
 	return(predictionEstimate(C, N, max_run_len, alph_size, "MultiMMC", verbose, label));
