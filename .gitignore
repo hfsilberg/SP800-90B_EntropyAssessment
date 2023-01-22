@@ -2,6 +2,7 @@
 *.log
 *.out
 *.res
+*.exe
 tmp.cpp
 test/
 ea_iid

@@ -92,7 +92,7 @@ static double binaryMultiMMCPredictionEstimate(const byte *S, long L, const int 
 	      
                // try attempted accuracy 
                assert(sb_tries[winner] != 0);
-               if(scoreboard[d] / float(sb_tries[d]) > scoreboard[winner] / float(sb_tries[winner])){ 
+               if(scoreboard[d] / float(sb_tries[d]) >= scoreboard[winner] / float(sb_tries[winner])){ 
                   //  printf("#%d# NEW WINNER %d, OLD: %d\n", i, d, winner);
                   //  printf("  new: %d / %d    old: %d / %d\n", scoreboard[d], sb_tries[d], scoreboard[winner], sb_tries[winner]);
                   winner = d;
@@ -234,7 +234,7 @@ double multi_mmc_test(byte *data, long len, int alph_size, const int verbose, co
 				// x has occurred, find max (x,y) pair across all y's
 
             // attempted acc
-            if(scoreboard[d] / float(sb_tries[d]) > max_acc) {// maybe tie break with sb_tries?
+            if(scoreboard[d] / float(sb_tries[d]) >= max_acc) {// maybe tie break with sb_tries?
                max_acc = scoreboard[d] / float(sb_tries[d]);
                max_pred = (curp->second).predict(predictCount);
                attempted_winner = d;
