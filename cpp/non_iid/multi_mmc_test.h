@@ -4,11 +4,71 @@
 #define D_MMC 16
 #define MAX_ENTRIES 100000
 
+enum voting_method {
+   MOSTCORR_W, // most correct 'wins' and is used as the main predictor's guess
+   ATMPTACC_W, // highest 'attempted accuracy' (correct / attempted) wins
+   ATMPTACC_P, // prioritize answers using attempted accuracy ranking - skipping any null guesses
+   POPULAR_W, // most popular guess wins and is used - tiebreak to group with highest depth
+   POPWEIGT_W // popular vote, but with each predictor's vote weighted with their accuracy
+};
+
+int _most_correct_index(long* correct) {
+   int max_correct = -1, max_index = -1;
+   for (int i = 0; i < D_MMC; i++){
+      if(correct[i] >= max_correct) {
+         max_correct = correct[i];
+         max_index = i;
+      }
+   }
+   return max_correct ? max_index : 0;
+}
+
+int _highest_attempted_acc_index(long* correct, long* attempts){
+   float max_acc = -1.0, max_index = -1;
+   for (int i = 0; i < D_MMC; i++){
+      if(attempts[i] == 0) continue;
+      if(correct[i] / attempts[i] > max_acc){
+         max_acc = correct[i] / attempts[i];
+         max_index = i;
+      }
+   }
+   return max_acc ? max_index : 0;
+}
+
+byte _most_popular_prediction(byte* predictions){
+   byte out = 0;
+   // iterate over all predictions, and count ones we see repeated
+   // tie break to deepest
+
+   return out;
+}
+
+byte _voted_prediction(voting_method vm, long* scoreboard, long* attempts, byte* predictions){
+                       // long* context_corrects, long* context_attempts) {
+   switch(vm) {
+      case MOSTCORR_W:
+         return predictions[_most_correct_index(scoreboard)];
+      case ATMPTACC_W:
+         return predictions[_highest_attempted_acc_index(scoreboard, attempts)];
+      // case ATMPTACC_P:
+
+      // case POPULAR_W:
+      default:
+         printf("unknown voting mechanism %d\n", vm);
+   }
+   return 0;
+}
+
 static double binaryMultiMMCPredictionEstimate(const byte *S, long L, const int verbose, const char *label)
 {
-
+   voting_method vm = MOSTCORR_W;
    long scoreboard[D_MMC] = {0};
-   long sb_tries[D_MMC] = {0};
+   long attempts[D_MMC] = {0};
+   byte predictions[D_MMC] = {0};
+   long context_corrects[D_MMC] = {0};
+   long context_attempts[D_MMC] = {0};
+
+
    long *binaryDict[D_MMC];
    long winner = 0;
    long curWinner;
@@ -46,12 +106,13 @@ static double binaryMultiMMCPredictionEstimate(const byte *S, long L, const int 
    for(i=2; i<L; i++) {
       bool found_x = false;
 
-      curWinner = winner;
+      // curWinner = winner; TBR
       curPattern = 0;
 
       //d+1 is the number of symbols used by the predictor
       for(d=0; (d<D_MMC) && (d<=i-2); d++) {
-         uint8_t curPrediction = 2;
+         // uint8_t curPrediction = 2; TBR
+         predictions[d] = 2;
          long curCount;
          long *binaryDictEntry;
 
@@ -70,10 +131,12 @@ static double binaryMultiMMCPredictionEstimate(const byte *S, long L, const int 
          if((d == 0) || found_x) {
             //For the prediction, curPrediction is the max across all pairs (there are only 2 symbols here!)
             if((binaryDictEntry[0] > binaryDictEntry[1])) {
-               curPrediction = 0;
+               // curPrediction = 0; // TBR
+               predictions[d] = 0;
                curCount = binaryDictEntry[0];
             } else {
-               curPrediction = 1;
+               // curPrediction = 1; TBR
+               predictions[d] = 1;
                curCount = binaryDictEntry[1];
             }
 
@@ -82,33 +145,33 @@ static double binaryMultiMMCPredictionEstimate(const byte *S, long L, const int 
          }
 
          if(found_x) {
-	         sb_tries[d]++;
+	         attempts[d]++;
             // x is present as a prefix.
             // Check to see if the current prediction is correct.
-            if(curPrediction == S[i]) {
+            if(predictions[d] == S[i]) {
                // prediction is correct, update scoreboard and (the next round's) winner
                scoreboard[d]++;
                //if(scoreboard[d] >= scoreboard[winner]) winner = d;
 	      
                // try attempted accuracy 
-               assert(sb_tries[winner] != 0);
-               if(scoreboard[d] / float(sb_tries[d]) >= scoreboard[winner] / float(sb_tries[winner])){ 
-                  //  printf("#%d# NEW WINNER %d, OLD: %d\n", i, d, winner);
-                  //  printf("  new: %d / %d    old: %d / %d\n", scoreboard[d], sb_tries[d], scoreboard[winner], sb_tries[winner]);
-                  winner = d;
-               }
+               // assert(sb_tries[winner] != 0);
+               // if(scoreboard[d] / float(sb_tries[d]) >= scoreboard[winner] / float(sb_tries[winner])){ 
+               //    //  printf("#%d# NEW WINNER %d, OLD: %d\n", i, d, winner);
+               //    //  printf("  new: %d / %d    old: %d / %d\n", scoreboard[d], sb_tries[d], scoreboard[winner], sb_tries[winner]);
+               //    winner = d;
+               // }
 	
                //If the best predictor was previously d, increment the relevant counters
-               if(d == curWinner){
-                  correctCount++;
-                  curRunOfCorrects++;
-                  if(curRunOfCorrects > maxRunOfCorrects) maxRunOfCorrects = curRunOfCorrects;
-               }
-            } else if(d == curWinner) {
+               // if(d == curWinner){
+               //    correctCount++;
+               //    curRunOfCorrects++;
+               //    if(curRunOfCorrects > maxRunOfCorrects) maxRunOfCorrects = curRunOfCorrects;
+               // }
+            } //else if(d == curWinner) {
                //This prediction was wrong;
                //If the best predictor was previously d, zero the run length counter
-               curRunOfCorrects = 0;
-            }
+            //    curRunOfCorrects = 0;
+            // }
 
             //Now check to see in (x,y) needs to be counted or (x,y) added to the dictionary
             if(binaryDictEntry[S[i]&1] != 0) {
@@ -127,8 +190,13 @@ static double binaryMultiMMCPredictionEstimate(const byte *S, long L, const int 
             binaryDictEntry[S[i]&1]=1;
             dictElems[d]++;
          }
-      }
-   }
+      } // sub-predictor loops
+      if (_voted_prediction(MOSTCORR_W, scoreboard, attempts, predictions) == S[i]){
+         correctCount++;
+         curRunOfCorrects++;
+         if(curRunOfCorrects > maxRunOfCorrects) maxRunOfCorrects = curRunOfCorrects;
+      } else curRunOfCorrects = 0;
+   } // input data loop
 
    for(j=0; j<D_MMC; j++) {
       delete[](binaryDict[j]);
@@ -268,7 +336,6 @@ double multi_mmc_test(byte *data, long len, int alph_size, const int verbose, co
                // attempted accuracy ranking
                // scoreboard[d]++;
                // attempted_accuracy[d] 
-               // if(scoredboard[d] / float(sb_tries[d]) > )
 				}
 				// else if(d == cur_winner) {
 				// 	//This prediction was wrong;
